@@ -1,0 +1,149 @@
+---
+- name: Setup and Manage AWS EC2 Instance
+  hosts: localhost
+  gather_facts: no
+  vars:
+    ansible_python_interpreter: /usr/bin/python3  # Adjust the path as necessary
+  tasks:
+    - name: Ensure boto3 and botocore are installed
+      ansible.builtin.pip:
+        name:
+          - boto3
+          - botocore
+        state: present
+
+- name: Ensure Nginx is installed on EC2 Instance and configure firewall
+  hosts: ec2_instance
+  become: yes
+  tasks:
+    - name: Ensure Nginx is installed
+      ansible.builtin.yum:
+        name: nginx
+        state: present
+
+    - name: Update all packages on a Red Hat-based system
+      ansible.builtin.yum:
+        name: '*'
+        state: latest
+
+    - name: Ensure firewalld is installed
+      ansible.builtin.yum:
+        name: firewalld
+        state: present
+
+    - name: Start and enable firewalld
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: yes
+
+    - name: Open HTTP port on firewalld
+      ansible.builtin.firewalld:
+        service: http
+        state: enabled
+        permanent: true
+        immediate: yes
+
+    - name: Open HTTPS port on firewalld
+      ansible.builtin.firewalld:
+        service: https
+        state: enabled
+        permanent: true
+        immediate: yes
+
+    - name: Deploy application from Git repository
+      ansible.builtin.git:
+        repo: 'https://github.com/diffior/SeniorExperience'
+        dest: /var/www/html/myapp
+        version: master  # Adjust this to the correct branch name
+
+ 
+
+
+
+      
+
+
+
+
+
+
+        # Code below requires AWS Access key and AWS secret key
+
+# - name: Gather information about a particular instance using ID and include kernel attribute
+#   hosts: localhost  # This should be localhost if you're querying AWS API, not ec2_instance
+#   gather_facts: no
+#   tasks:
+#     - name: Gather information about specific EC2 instances
+#       amazon.aws.ec2_instance_info:
+#         region: us-west-1  # Specify your region
+#         filters:
+#           instance-state-name:
+#             - "shutting-down"
+#             - "stopping"
+#             - "stopped"
+#       register: ec2_info
+#     - name: Debug output of EC2 instances
+#       ansible.builtin.debug:
+#         var: ec2_info
+
+# - name: Gather information about a particular instance using ID and include kernel attribute
+#   hosts: ec2_instance  # Changed to localhost if you're gathering facts from AWS API
+#   gather_facts: yes
+#   tasks:
+#     - name: Gather information about a specific EC2 instance
+#       amazon.aws.ec2_instance_info:
+#         region: us-west-1  # For Northern California
+#         instance_ids:
+#           - i-047650887bd94aa9d
+#         include_attributes:
+#           - kernel
+#       register: ec2_info
+#     # Example task to debug output, can be removed or modified as needed
+#     - name: Debug EC2 info
+#       ansible.builtin.debug:
+# #         var: ec2_info
+
+
+  # tasks:
+  #   - name      
+  #       community.aws.aws_ssm:
+  #        instance_ids: 
+  #       - i-047650887bd94aa9d
+  #     document_name: AWS-RunShellScript
+  #     parameters:
+  #       commands:
+  #         - echo "Meeting at 2pm"
+
+# - name: Gather EC2 Instance Information and Ensure SSH Availability
+#   hosts: localhost
+#   gather_facts: no
+#   tasks:
+#     - name: Gather information about a particular instance using ID
+#       amazon.aws.ec2_instance_info:
+#         instance_ids:
+#           - "i-047650887bd94aa9d"
+#         region: us-west-1
+#         aws_access_key: your_access_key
+#         aws_secret_key: your_secret_key
+#         security_token: your_session_token
+#       register: ec2_info
+
+#     - name: Print the gathered information
+#       debug:
+#         msg: "{{ ec2_info.instances }}"
+
+# - name: Ensure SSH Availability on EC2 Instance
+#   hosts: localhost
+#   gather_facts: no
+#   tasks:
+#     - name: Wait for SSH to become available on the EC2 instance
+#       wait_for:
+#         host: "your_ec2_instance_public_ip_or_dns" # Replace with your instance's public IP or DNS
+#         port: 22
+#         timeout: 5 # Timeout for each wait_for attempt
+#         state: started
+#       register: ssh_result
+#       until: ssh_result is succeeded
+#       retries: 24 # Number of retries (24 retries * 5 seconds = 120 seconds)
+#       delay: 5 # Delay between retries in seconds
