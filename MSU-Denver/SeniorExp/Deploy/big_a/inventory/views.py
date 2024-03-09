@@ -1,34 +1,69 @@
-from django.shortcuts import render
-from rest_framework.views import APIView
-from rest_framework.response import Response
+# # views.py
+# # from django.http import JsonResponse, HttpResponse
+# # from rest_framework.parsers import JSONParser
+# from django.views.decorators.csrf import csrf_exempt
+# from .models import Inventory
+# from .serializers import InventorySerializer
+# # from django.http import JsonResponse, HttpResponse
+# from rest_framework import status
+# from rest_framework.decorators import api_view
+# from rest_framework.response import Response
+# # from .serializers import InventorySerializer
+
+from django.http import HttpResponse, JsonResponse
+from rest_framework.parsers import JSONParser
 from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from rest_framework import status
+from .models import Inventory
 from .serializers import InventorySerializer
-from django.conf import settings
-import os
-
-# Create your views here.
-# inventory/views.py
+from rest_framework.response import Response
 
 
-class InventoryAPIView(APIView):
-    def post(self, request, *args, **kwargs):
+@api_view(['GET', 'POST'])
+def inventory_list(request):
+    """
+    List all inventory items, or create a new inventory item.
+    """
+    if request.method == 'GET':
+        items = Inventory.objects.all()
+        serializer = InventorySerializer(items, many=True)
+        return Response(serializer.data)
+
+    elif request.method == 'POST':
         serializer = InventorySerializer(data=request.data)
         if serializer.is_valid():
-            data = serializer.validated_data
-            # You can now use the validated data from the serializer
-            inventory_entry = f"""[aws_instances]
-{data['instance_name']} ansible_host={data['host_ip']} ansible_user={data['user']} ansible_ssh_private_key_file={data['ssh_key_path']} ansible_python_interpreter={data['python_interpreter']}
-"""
-            # file_name = "/path/to/your/inventory_directory/ansible_inventory.ini"  # Specify the path where you want to save the file
-            # os.makedirs(os.path.dirname(file_name), exist_ok=True)
-            # with open(file_name, "w") as file:
-            #     file.write(inventory_entry)
-
-            file_name = os.path.join(settings.MEDIA_ROOT, "ansible_inventory.ini")
-            os.makedirs(os.path.dirname(file_name), exist_ok=True)
-            with open(file_name, "w") as file:
-                file.write(inventory_entry)
-            
-            return Response({"message": "Inventory file created successfully.", "file_name": file_name}, status=status.HTTP_201_CREATED)
+            serializer.save()
+            saved_instance = serializer.save()  # Save the instance and keep the returned instance
+            response_data = saved_instance.pk  # Add the pk to the response data
+            serializer = InventorySerializer(saved_instance)  # Re-serialize the instance to include the pk
+            response_data = {'pk': saved_instance.pk, 'data': serializer.data}
+            return Response(response_data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET', 'PUT', 'DELETE'])
+def inventory_detail(request, pk):
+    """
+    Retrieve, update, or delete an inventory item.
+    """
+    try:
+        item = Inventory.objects.get(pk=pk)
+    except Inventory.DoesNotExist:
+        return HttpResponse(status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        serializer = InventorySerializer(item)
+        return Response(serializer.data)
+
+    elif request.method == 'PUT':
+        serializer = InventorySerializer(item, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    elif request.method == 'DELETE':
+        item.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+

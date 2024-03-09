@@ -1,6 +1,18 @@
-from django.urls import path
-from .views import InventoryAPIView
+# urls.py
+from django.urls import include, path
+from . import views
+from django.contrib import admin
+
+app_name = 'inventory'
 
 urlpatterns = [
-    path('create_inventory/', InventoryAPIView.as_view(), name='create_inventory'),
+    path('admin/', admin.site.urls),
+    #path('', include('inventory.urls')), 
+    path('inventory/', views.inventory_list, name='inventory-list'),
+    path('inventory/<int:pk>/', views.inventory_detail, name='inventory-detail'),
+    path('', views.inventory_list, name='inventory-list'),
+    path('<int:pk>/', views.inventory_detail, name='inventory-detail'),
+     
 ]
+
+
